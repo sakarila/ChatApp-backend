@@ -1,14 +1,42 @@
 require('dotenv').config();
 const cors = require('cors');
 const express = require('express');
-const authRouter = require('./controllers/authentication')
+const socketio = require('socket.io');
+const http = require('http');
+
+const authRouter = require('./controllers/authentication');
+const chatRouter = require('./controllers/chat');
+const messageRouter = require('./controllers/message');
 
 const app = express();
+
+const tokenExtractor = (request, response, next) => {
+  const authorization = request.get('authorization')
+  if (authorization && authorization.toLowerCase().startsWith('bearer ')) {
+    request.token = authorization.substring(7)
+  }
+  next()
+}
+
 app.use(cors());
 app.use(express.json());
+app.use(tokenExtractor)
 app.use('/api/auth', authRouter);
+app.use('/api/chat', chatRouter);
+app.use('/api/message', messageRouter);
+
+const server = http.createServer(app);
+const io = socketio(server);
+
+io.on('connection', (socket) => {
+  console.log("new connection");
+
+  socket.on('disconnect', () => {
+    console.log("User has left");
+  });
+});
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });

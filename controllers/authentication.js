@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const authRouter = require('express').Router();
 const User = require('../models/user');
 
-authRouter.post('/signup', (req, res, next) => {
+authRouter.post('/signup', (req, res) => {
   const body = req.body;
   console.log(body);
 
@@ -24,13 +24,13 @@ authRouter.post('/signup', (req, res, next) => {
       .then(savedUser => {
           res.json(savedUser.toJSON())
       })
-      .catch(error => next(error))
 });
 
 authRouter.post('/login', async (req, res) => {
   const body = req.body;
+  const username = body.username
 
-  const user = await User.findOne({ username: body.username });
+  const user = await User.findOne({ username });
   const passwordCorrect = user === null ? false : await bcrypt.compare(body.password, user.password);
 
   if (!(user && passwordCorrect)) {
@@ -40,12 +40,12 @@ authRouter.post('/login', async (req, res) => {
   };
 
   const userToken = {
-    username: user.username,
+    username: username,
     id: user._id,
   };
 
   const token = jwt.sign(userToken, process.env.SECRET);
-  res.status(200).send({ token, username: user.username, name: user.name });
+  res.status(200).send({ token, username});
 });
 
 module.exports = authRouter;
