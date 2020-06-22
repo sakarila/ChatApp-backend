@@ -1,6 +1,7 @@
 const mongoose = require('mongoose')
 const uniqueValidator = require('mongoose-unique-validator');
 mongoose.set('useCreateIndex', true);
+mongoose.set('useFindAndModify', false);
 
 const chatSchema = mongoose.Schema({
     title: {
@@ -15,6 +16,12 @@ const chatSchema = mongoose.Schema({
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
+      }
+    ],
+    messages: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Message'
       }
     ]
 })

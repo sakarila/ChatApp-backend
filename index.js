@@ -6,7 +6,6 @@ const http = require('http');
 
 const authRouter = require('./controllers/authentication');
 const chatRouter = require('./controllers/chat');
-const messageRouter = require('./controllers/message');
 
 const app = express();
 
@@ -23,7 +22,6 @@ app.use(express.json());
 app.use(tokenExtractor)
 app.use('/api/auth', authRouter);
 app.use('/api/chat', chatRouter);
-app.use('/api/message', messageRouter);
 
 const server = http.createServer(app);
 const io = socketio(server);
