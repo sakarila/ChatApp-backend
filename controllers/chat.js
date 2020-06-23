@@ -47,7 +47,7 @@ chatRouter.get('/:id', async (req, res) => {
      path: 'messages',
      populate: {
        path: 'user',
-       select: { username: 1 }
+       select: 'username'
      }
   })
 
@@ -68,15 +68,35 @@ chatRouter.post('/:id', async (req, res) => {
   const message = new Message( {
       message: body.message,
       user: user._id,
-      chat: chatID
-  });
+  })
 
   const chat = await Chat.findByIdAndUpdate(chatID, { $push: { messages: message } }, {new: true});
-  
-  message.save()
-      .then(savedMessage => {
-          res.json(savedMessage.toJSON())
-      })
+  if(!chat || !chat.users.includes(user._id)) {
+    return res.status(400).json({ error: 'something went wrong' });
+  }
+
+  message.save((err, newMessage) => {
+    Message.populate(newMessage, {path: 'user', select: 'username'})
+    .then(populatedMessage => {
+      res.json(populatedMessage.toJSON())
+    })
+  })
+});
+
+chatRouter.post('/:id/user', async (req, res) => {
+  const body = req.body;
+  const chatID = req.params.id
+
+  const token = jwt.verify(req.token, process.env.SECRET)
+  const user = await User.find({username: body.username});
+
+  if ( !chatID || !user ) {
+      return res.status(400).json({ error: 'something went wrong' });
+  };
+
+  const chat = await Chat.findByIdAndUpdate(chatID, { $push: { users: user } }, {new: true});
+
+  res.json(chat.toJSON())
 });
 
 

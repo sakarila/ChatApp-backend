@@ -8,10 +8,6 @@ const messageSchema = mongoose.Schema({
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User'
     },
-    chat: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Chat'
-    },
     time : { type : Date, default: Date.now }
 });
 
