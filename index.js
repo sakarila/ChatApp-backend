@@ -4,7 +4,7 @@ const express = require('express');
 const socketio = require('socket.io');
 const http = require('http');
 
-const authRouter = require('./controllers/authentication');
+const authRouter = require('./controllers/authenticate');
 const chatRouter = require('./controllers/chat');
 
 const app = express();

@@ -48,4 +48,11 @@ authRouter.post('/login', async (req, res) => {
   res.status(200).send({ token, username});
 });
 
+authRouter.get('/', async (req, res) => {
+  const token = jwt.verify(req.token, process.env.SECRET)
+  const users = await User.find({}).select('username');
+
+  res.status(200).send(users);
+});
+
 module.exports = authRouter;

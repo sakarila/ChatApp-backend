@@ -35,7 +35,7 @@ chatRouter.get('/', async (req, res) => {
     return res.status(400).json({ error: 'Invalid token' });
   };
 
-  const chats = await Chat.find({}).where('users').in([user._id]).select({'title': 1});
+  const chats = await Chat.find({}).where('users').in([user._id]).select('title');
   res.json(chats.map(chat => chat.toJSON()))
 })
 
@@ -43,13 +43,12 @@ chatRouter.get('/:id', async (req, res) => {
 
   const token = jwt.verify(req.token, process.env.SECRET)
   const chat = await Chat.findById(req.params.id)
-  .populate({ 
-     path: 'messages',
-     populate: {
-       path: 'user',
-       select: 'username'
-     }
-  })
+  .populate([{ 
+    path: 'messages', populate:
+      { path: 'user', select: 'username' }},
+      { path: 'creator', select: 'username' },
+      { path: 'users', select: 'username' },
+  ])
 
   res.json(chat);
 })
@@ -83,12 +82,15 @@ chatRouter.post('/:id', async (req, res) => {
   })
 });
 
-chatRouter.post('/:id/user', async (req, res) => {
+chatRouter.post('/user/:id', async (req, res) => {
+  console.log(req.params.id);
+  console.log(req.body);
+
   const body = req.body;
   const chatID = req.params.id
 
   const token = jwt.verify(req.token, process.env.SECRET)
-  const user = await User.find({username: body.username});
+  const user = await User.findOne({username: body.username}).select('username');
 
   if ( !chatID || !user ) {
       return res.status(400).json({ error: 'something went wrong' });
@@ -96,7 +98,7 @@ chatRouter.post('/:id/user', async (req, res) => {
 
   const chat = await Chat.findByIdAndUpdate(chatID, { $push: { users: user } }, {new: true});
 
-  res.json(chat.toJSON())
+  res.json(user);
 });
 
 
