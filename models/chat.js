@@ -1,7 +1,7 @@
 const mongoose = require('mongoose')
 const uniqueValidator = require('mongoose-unique-validator');
 mongoose.set('useCreateIndex', true);
-mongoose.set('useFindAndModify', false);
+mongoose.set('useFindAndModify', false)
 
 const chatSchema = mongoose.Schema({
     title: {
