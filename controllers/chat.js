@@ -3,6 +3,15 @@ var jwt = require('jsonwebtoken');
 const Chat = require('../models/chat');
 const User = require('../models/user');
 const Message = require('../models/message');
+const chat = require('../models/chat');
+
+const getLatestMessageTime = async (chatID) => {
+  const chat = await Chat.findById(chatID).populate('messages');
+  const latestTime = new Date(Math.max.apply(null, chat.messages.map((message) => {
+    return new Date(message.time);
+  })));
+  return latestTime;
+}
 
 chatRouter.post('/', async (req, res) => {
   const body = req.body;
@@ -36,7 +45,9 @@ chatRouter.get('/', async (req, res) => {
   };
 
   const chats = await Chat.find({}).where('users').in([user._id]).select('title');
-  res.json(chats.map(chat => chat.toJSON()))
+  const chatsWithTimes = await Promise.all(chats.map( async (chat) => ({id: chat._id, title: chat.title, latestMessage: await getLatestMessageTime(chat._id) })))
+
+  res.json(chatsWithTimes);
 })
 
 chatRouter.get('/:id', async (req, res) => {

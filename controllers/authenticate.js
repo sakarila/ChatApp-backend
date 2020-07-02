@@ -47,7 +47,7 @@ authRouter.post('/login', async (req, res) => {
   };
 
   const token = jwt.sign(userToken, process.env.SECRET);
-  res.status(200).send({ token, username});
+  res.status(200).send({ token, username, lastLogin: user.lastLogin});
 });
 
 // Get list of all the users
@@ -66,12 +66,15 @@ authRouter.post('/', async (req, res) => {
       return res.status(400).json({ error: 'invalid token' });
   };
 
-  console.log(token.id)
-
   const user = await User.findByIdAndUpdate(token.id, { lastLogin: Date.now() }, {new: true});
 
-  console.log(user)
-  res.json(user.toJSON())
+  const userToken = {
+    username: user.username,
+    id: user._id,
+  };
+
+  const newToken = jwt.sign(userToken, process.env.SECRET);
+  res.status(200).send({ token: newToken, username: user.username, lastLogin: user.lastLogin});
 });
 
 module.exports = authRouter;
