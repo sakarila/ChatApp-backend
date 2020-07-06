@@ -18,17 +18,27 @@ chatRouter.post('/', async (req, res) => {
   const token = jwt.verify(req.token, process.env.SECRET)
   const user = await User.findById(token.id);
 
-  if ( !body.title || !user ) {
+  console.log(body.users)
+  console.log(body.title)
+  
+
+  if ( !body.title || !user || !body.users) {
       return res.status(400).json({ error: 'content missing or invalid token' });
   };
+
+  const users = await User.find({}).where('username').in(body.users).select('_id');
+  const userIDs = users.map(obj => obj._id);
+  console.log(userIDs);
+
 
   const chat = new Chat( {
       creator: user._id,
       title: body.title,
-      users: [user._id],
+      users: userIDs.concat(user._id),
       messages: []
   });
-
+  console.log(chat);
+  
   chat.save()
       .then(savedChat => {
           res.json(savedChat.toJSON())
