@@ -3,7 +3,6 @@ var jwt = require('jsonwebtoken');
 const Chat = require('../models/chat');
 const User = require('../models/user');
 const Message = require('../models/message');
-const chat = require('../models/chat');
 
 const getLatestMessageTime = async (chatID) => {
   const chat = await Chat.findById(chatID).populate('messages');
@@ -18,18 +17,12 @@ chatRouter.post('/', async (req, res) => {
   const token = jwt.verify(req.token, process.env.SECRET)
   const user = await User.findById(token.id);
 
-  console.log(body.users)
-  console.log(body.title)
-  
-
   if ( !body.title || !user || !body.users) {
       return res.status(400).json({ error: 'content missing or invalid token' });
   };
 
   const users = await User.find({}).where('username').in(body.users).select('_id');
   const userIDs = users.map(obj => obj._id);
-  console.log(userIDs);
-
 
   const chat = new Chat( {
       creator: user._id,
@@ -37,11 +30,10 @@ chatRouter.post('/', async (req, res) => {
       users: userIDs.concat(user._id),
       messages: []
   });
-  console.log(chat);
-  
+
   chat.save()
       .then(savedChat => {
-          res.json(savedChat.toJSON())
+          res.json({id: savedChat._id, title: savedChat.title, latestMessage: null})
       })
 });
 
@@ -104,8 +96,6 @@ chatRouter.post('/:id', async (req, res) => {
 });
 
 chatRouter.post('/user/:id', async (req, res) => {
-  console.log(req.params.id);
-  console.log(req.body);
 
   const body = req.body;
   const chatID = req.params.id

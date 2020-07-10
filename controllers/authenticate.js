@@ -6,7 +6,6 @@ const User = require('../models/user');
 // Create a new user
 authRouter.post('/signup', (req, res) => {
   const body = req.body;
-  console.log(body);
 
   if (!body.username || !body.email || !body.password) {
       return res.status(400).json({ error: 'content missing' });
