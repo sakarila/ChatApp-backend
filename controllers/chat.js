@@ -12,6 +12,28 @@ const getLatestMessageTime = async (chatID) => {
   return latestTime;
 }
 
+const initMessageNotification = (userID, messages) => {
+  const check = messages.every(message => {
+    return message.seen.some(user => {
+      return user.equals(userID)
+    })
+  });
+  return check ? '' : 'New messages!';
+};
+
+const markSeen = async (userID, messages) => {
+  messages.forEach( async (msg) => {
+    const message = await Message.findById(msg._id)
+    const haveSeen = message.seen.some(user => {
+      return user.equals(userID)
+    })
+    if (!haveSeen) {
+      const updatedMessage = await Message.findByIdAndUpdate(msg._id, { $push: { seen: userID } }, {new: true});
+    }
+  });
+  return true;
+}
+
 chatRouter.post('/', async (req, res) => {
   const body = req.body;
   const token = jwt.verify(req.token, process.env.SECRET)
@@ -46,23 +68,35 @@ chatRouter.get('/', async (req, res) => {
     return res.status(400).json({ error: 'Invalid token' });
   };
 
-  const chats = await Chat.find({}).where('users').in([user._id]).select('title');
-  const chatsWithTimes = await Promise.all(chats.map( async (chat) => ({id: chat._id, title: chat.title, latestMessage: await getLatestMessageTime(chat._id) })))
+  const chats = await Chat.find({}).where('users').in([user._id])
+  .populate({ 
+    path: 'messages', populate: [
+      { path: 'user', select: 'username' },
+      { path: 'seen', select: 'username' }]}
+  )
 
+  const chatsWithTimes = await Promise.all(chats.map( async (chat) => ({
+      id: chat._id, title: chat.title, latestMessage: await getLatestMessageTime(chat._id), messageNotification: initMessageNotification(user._id, chat.messages)
+  })))
+
+  console.log(chatsWithTimes)
   res.json(chatsWithTimes);
 })
 
 chatRouter.get('/:id', async (req, res) => {
 
   const token = jwt.verify(req.token, process.env.SECRET)
+  const user = await User.findById(token.id);
   const chat = await Chat.findById(req.params.id)
   .populate([{ 
-    path: 'messages', populate:
-      { path: 'user', select: 'username' }},
+    path: 'messages', populate: [
+      { path: 'user', select: 'username' },
+      { path: 'seen', select: 'username' }]},
       { path: 'creator', select: 'username' },
       { path: 'users', select: 'username' },
   ])
 
+  const updatedMessages = await markSeen(user._id.toString(), chat.messages);
   res.json(chat);
 })
 
@@ -80,6 +114,7 @@ chatRouter.post('/:id', async (req, res) => {
   const message = new Message( {
       message: body.message,
       user: user._id,
+      seen: [user._id],
   })
 
   const chat = await Chat.findByIdAndUpdate(chatID, { $push: { messages: message } }, {new: true});
@@ -88,7 +123,7 @@ chatRouter.post('/:id', async (req, res) => {
   }
 
   message.save((err, newMessage) => {
-    Message.populate(newMessage, {path: 'user', select: 'username'})
+    Message.populate(newMessage, [{path: 'user', select: 'username'}, { path: 'seen', select: 'username'}])
     .then(populatedMessage => {
       res.json(populatedMessage.toJSON())
     })

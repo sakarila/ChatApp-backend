@@ -7,6 +7,12 @@ const messageSchema = mongoose.Schema({
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User'
     },
+    seen: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      }
+    ],
     time : { type : Date, default: Date.now }
 });
 
