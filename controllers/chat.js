@@ -78,8 +78,6 @@ chatRouter.get('/', async (req, res) => {
   const chatsWithTimes = await Promise.all(chats.map( async (chat) => ({
       id: chat._id, title: chat.title, latestMessage: await getLatestMessageTime(chat._id), messageNotification: initMessageNotification(user._id, chat.messages)
   })))
-
-  console.log(chatsWithTimes)
   res.json(chatsWithTimes);
 })
 
@@ -129,6 +127,29 @@ chatRouter.post('/:id', async (req, res) => {
     })
   })
 });
+
+chatRouter.delete('/chat/:id', async (req, res) => {
+  const chatID = req.params.id
+
+  const token = jwt.verify(req.token, process.env.SECRET)
+  const user = await User.findById(token.id);
+
+  if ( !user ) {
+    return res.status(400).json({ error: 'invalid token' });
+  };
+
+  const updatedChat = await Chat.findByIdAndUpdate(chatID, { $pullAll: { users: [ user._id]}}, {new: true})
+  const ID = updatedChat._id
+
+  if ( updatedChat.users.length === 0) {
+    updatedChat.messages.forEach( async (msg) => {
+      await Message.findByIdAndRemove(msg._id);
+    })
+    updatedChat.remove();
+  }
+
+  res.json({chatID: ID});
+})
 
 chatRouter.post('/user/:id', async (req, res) => {
 

@@ -64,6 +64,10 @@ io.on('connection', async (socket) => {
     socket.join(chatID);
   })
 
+  socket.on('leave-chat', async ( { chatID }) => {
+    socket.leave(chatID);
+  })
+
   socket.on('disconnect', async () => {
     console.log("User has left");
     const users = await findLoggedUsers();
