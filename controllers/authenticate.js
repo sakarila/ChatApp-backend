@@ -13,7 +13,7 @@ authRouter.post('/signup', (req, res) => {
 
   const saltRounds = 10;
   const hash = bcrypt.hashSync(body.password, saltRounds);
-
+  
   const user = new User( {
       username: body.username,
       email: body.email,
@@ -23,6 +23,9 @@ authRouter.post('/signup', (req, res) => {
   user.save()
       .then(savedUser => {
           res.json(savedUser.toJSON())
+      })
+      .catch(()=> {
+        res.status(400).json({ error: 'Your username or e-mail is already taken.' });
       })
 });
 

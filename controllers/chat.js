@@ -36,136 +36,145 @@ const markSeen = async (userID, messages) => {
 
 chatRouter.post('/', async (req, res) => {
   const body = req.body;
-  const token = jwt.verify(req.token, process.env.SECRET)
-  const user = await User.findById(token.id);
-
-  if ( !body.title || !user || !body.users) {
-      return res.status(400).json({ error: 'content missing or invalid token' });
+  if ( !body.title || !body.users) {
+      return res.status(400).json({ error: 'content missing' });
   };
 
-  const users = await User.find({}).where('username').in(body.users).select('_id');
-  const userIDs = users.map(obj => obj._id);
+  try {
+    const token = jwt.verify(req.token, process.env.SECRET)
+    const user = await User.findById(token.id);
 
-  const chat = new Chat( {
-      creator: user._id,
-      title: body.title,
-      users: userIDs.concat(user._id),
-      messages: []
-  });
+    const users = await User.find({}).where('username').in(body.users).select('_id');
+    const userIDs = users.map(obj => obj._id);
 
-  chat.save()
-      .then(savedChat => {
-          res.json({id: savedChat._id, title: savedChat.title, latestMessage: null})
-      })
+    const chat = new Chat( {
+        creator: user._id,
+        title: body.title,
+        users: userIDs.concat(user._id),
+        messages: []
+    });
+
+    chat.save()
+        .then(savedChat => {
+            res.json({id: savedChat._id, title: savedChat.title, latestMessage: null})
+        })
+  } catch {
+    res.status(400).json({ error: 'something went wrong' });
+  }
 });
 
 chatRouter.get('/', async (req, res) => {
+  try {
+    const token = jwt.verify(req.token, process.env.SECRET)
+    const user = await User.findById(token.id);
 
-  const token = jwt.verify(req.token, process.env.SECRET)
-  const user = await User.findById(token.id);
+    const chats = await Chat.find({}).where('users').in([user._id])
+    .populate({ 
+      path: 'messages', populate: [
+        { path: 'user', select: 'username' },
+        { path: 'seen', select: 'username' }]}
+    )
 
-  if ( !user ) {
-    return res.status(400).json({ error: 'Invalid token' });
-  };
-
-  const chats = await Chat.find({}).where('users').in([user._id])
-  .populate({ 
-    path: 'messages', populate: [
-      { path: 'user', select: 'username' },
-      { path: 'seen', select: 'username' }]}
-  )
-
-  const chatsWithTimes = await Promise.all(chats.map( async (chat) => ({
-      id: chat._id, title: chat.title, latestMessage: await getLatestMessageTime(chat._id), messageNotification: initMessageNotification(user._id, chat.messages)
-  })))
-  res.json(chatsWithTimes);
+    const chatsWithTimes = await Promise.all(chats.map( async (chat) => ({
+        id: chat._id, title: chat.title, latestMessage: await getLatestMessageTime(chat._id), messageNotification: initMessageNotification(user._id, chat.messages)
+    })))
+    res.json(chatsWithTimes);
+  } catch {
+    res.status(400).json({ error: 'something went wrong' });
+  }
 })
 
 chatRouter.get('/:id', async (req, res) => {
+  try {
+    const token = jwt.verify(req.token, process.env.SECRET)
+    const user = await User.findById(token.id);
+    const chat = await Chat.findById(req.params.id)
+    .populate([{ 
+      path: 'messages', populate: [
+        { path: 'user', select: 'username' },
+        { path: 'seen', select: 'username' }]},
+        { path: 'creator', select: 'username' },
+        { path: 'users', select: 'username' },
+    ])
 
-  const token = jwt.verify(req.token, process.env.SECRET)
-  const user = await User.findById(token.id);
-  const chat = await Chat.findById(req.params.id)
-  .populate([{ 
-    path: 'messages', populate: [
-      { path: 'user', select: 'username' },
-      { path: 'seen', select: 'username' }]},
-      { path: 'creator', select: 'username' },
-      { path: 'users', select: 'username' },
-  ])
-
-  const updatedMessages = await markSeen(user._id.toString(), chat.messages);
-  res.json(chat);
+    await markSeen(user._id.toString(), chat.messages);
+    res.json(chat);
+  } catch {
+    res.status(400).json({ error: 'something went wrong' });
+  }
 })
 
 chatRouter.post('/:id', async (req, res) => {
   const body = req.body;
   const chatID = req.params.id
-  
-  const token = jwt.verify(req.token, process.env.SECRET)
-  const user = await User.findById(token.id);
-  
-  if ( !body.message || !user ) {
-      return res.status(400).json({ error: 'content missing or invalid token' });
-  };
-  
-  const message = new Message( {
-      message: body.message,
-      user: user._id,
-      seen: [user._id],
-  })
 
-  const chat = await Chat.findByIdAndUpdate(chatID, { $push: { messages: message } }, {new: true});
-  if(!chat || !chat.users.includes(user._id)) {
-    return res.status(400).json({ error: 'something went wrong' });
-  }
-
-  message.save((err, newMessage) => {
-    Message.populate(newMessage, [{path: 'user', select: 'username'}, { path: 'seen', select: 'username'}])
-    .then(populatedMessage => {
-      res.json(populatedMessage.toJSON())
+  try {
+    const token = jwt.verify(req.token, process.env.SECRET)
+    const user = await User.findById(token.id);
+    
+    if (!body.message) {
+        return res.status(400).json({ error: 'content missing' });
+    };
+    
+    const message = new Message( {
+        message: body.message,
+        user: user._id,
+        seen: [user._id],
     })
-  })
+
+    await Chat.findByIdAndUpdate(chatID, { $push: { messages: message } }, {new: true});
+    message.save((err, newMessage) => {
+      Message.populate(newMessage, [{path: 'user', select: 'username'}, { path: 'seen', select: 'username'}])
+      .then(populatedMessage => {
+        res.json(populatedMessage.toJSON())
+      })
+    })
+  } catch {
+    res.status(400).json({ error: 'something went wrong' });
+  }
 });
 
 chatRouter.delete('/chat/:id', async (req, res) => {
-  const chatID = req.params.id
+  try {
+    const chatID = req.params.id
 
-  const token = jwt.verify(req.token, process.env.SECRET)
-  const user = await User.findById(token.id);
+    const token = jwt.verify(req.token, process.env.SECRET)
+    const user = await User.findById(token.id);
 
-  if ( !user ) {
-    return res.status(400).json({ error: 'invalid token' });
-  };
+    const updatedChat = await Chat.findByIdAndUpdate(chatID, { $pullAll: { users: [ user._id]}}, {new: true})
+    const ID = updatedChat._id
 
-  const updatedChat = await Chat.findByIdAndUpdate(chatID, { $pullAll: { users: [ user._id]}}, {new: true})
-  const ID = updatedChat._id
+    if ( updatedChat.users.length === 0) {
+      updatedChat.messages.forEach( async (msg) => {
+        await Message.findByIdAndRemove(msg._id);
+      })
+      updatedChat.remove();
+    }
 
-  if ( updatedChat.users.length === 0) {
-    updatedChat.messages.forEach( async (msg) => {
-      await Message.findByIdAndRemove(msg._id);
-    })
-    updatedChat.remove();
+    res.json({chatID: ID});
+  } catch {
+    res.status(400).json({ error: 'something went wrong' });
   }
-
-  res.json({chatID: ID});
 })
 
 chatRouter.post('/user/:id', async (req, res) => {
 
-  const body = req.body;
+  const username = req.body.username;
   const chatID = req.params.id
 
-  const token = jwt.verify(req.token, process.env.SECRET)
-  const user = await User.findOne({username: body.username}).select('username');
-
-  if ( !chatID || !user ) {
-      return res.status(400).json({ error: 'something went wrong' });
+  if ( !username ) {
+    return res.status(400).json({ error: 'content missing' });
   };
 
-  const chat = await Chat.findByIdAndUpdate(chatID, { $push: { users: user } }, {new: true});
+  try {
+    jwt.verify(req.token, process.env.SECRET)
+    const user = await User.findOne({username: username}).select('username');
+    await Chat.findByIdAndUpdate(chatID, { $push: { users: user } }, {new: true});
 
-  res.json(user);
+    res.json(user);
+  } catch {
+    res.status(400).json({ error: 'something went wrong' });
+  }
 });
 
 
