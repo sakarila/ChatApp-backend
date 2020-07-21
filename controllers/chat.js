@@ -84,7 +84,7 @@ chatRouter.get('/', async (req, res) => {
   }
 })
 
-chatRouter.get('/:id', async (req, res) => {
+chatRouter.get('/:id/:numOfMessages', async (req, res) => {
   try {
     const token = jwt.verify(req.token, process.env.SECRET)
     const user = await User.findById(token.id);
@@ -98,8 +98,13 @@ chatRouter.get('/:id', async (req, res) => {
     ])
 
     await markSeen(user._id.toString(), chat.messages);
+
+    // Getting only the next 50 messages from the chat
+    chat.messages = chat.messages.reverse().slice(0, req.params.numOfMessages + 50).reverse();
     res.json(chat);
-  } catch {
+
+  } catch (error) {
+    console.log(error)
     res.status(400).json({ error: 'something went wrong' });
   }
 })
