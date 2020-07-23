@@ -84,7 +84,7 @@ chatRouter.get('/', async (req, res) => {
   }
 })
 
-chatRouter.get('/:id/:numOfMessages', async (req, res) => {
+chatRouter.get('/:id', async (req, res) => {
   try {
     const token = jwt.verify(req.token, process.env.SECRET)
     const user = await User.findById(token.id);
@@ -99,9 +99,30 @@ chatRouter.get('/:id/:numOfMessages', async (req, res) => {
 
     await markSeen(user._id.toString(), chat.messages);
 
-    // Getting only the next 50 messages from the chat
-    chat.messages = chat.messages.reverse().slice(0, req.params.numOfMessages + 50).reverse();
+    chat.messages = chat.messages.reverse().slice(0, 50).reverse();
     res.json(chat);
+
+  } catch (error) {
+    console.log(error)
+    res.status(400).json({ error: 'something went wrong' });
+  }
+})
+
+chatRouter.get('/:id/:numOfMessages', async (req, res) => {
+  try {
+    const token = jwt.verify(req.token, process.env.SECRET)
+    const user = await User.findById(token.id);
+    const chat = await Chat.findById(req.params.id)
+    .populate([{ 
+      path: 'messages', populate: [
+        { path: 'user', select: 'username' },
+        { path: 'seen', select: 'username' }]},
+        { path: 'creator', select: 'username' },
+        { path: 'users', select: 'username' },
+    ])
+
+    chat.messages = chat.messages.reverse().slice(req.params.numOfMessages, req.params.numOfMessages + 50).reverse();
+    res.json({messages: chat.messages});
 
   } catch (error) {
     console.log(error)
