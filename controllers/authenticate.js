@@ -1,7 +1,9 @@
 var jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const authRouter = require('express').Router();
+
 const User = require('../models/user');
+const helpers = require('../helpers');
 
 // Create a new user
 authRouter.post('/signup', (req, res) => {
@@ -13,7 +15,7 @@ authRouter.post('/signup', (req, res) => {
 
   const saltRounds = 10;
   const hash = bcrypt.hashSync(body.password, saltRounds);
-  
+
   const user = new User( {
       username: body.username,
       email: body.email,
@@ -49,7 +51,7 @@ authRouter.post('/login', async (req, res) => {
   };
 
   const token = jwt.sign(userToken, process.env.SECRET);
-  res.status(200).send({ token, username, lastLogin: user.lastLogin});
+  res.status(200).send({ token, username, lastLogin: user.lastLogin, id: user._id});
 });
 
 // Get list of all the users

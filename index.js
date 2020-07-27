@@ -6,6 +6,8 @@ const http = require('http');
 const socketio = require('socket.io');
 const Message = require('./models/message');
 const Chat = require('./models/chat');
+const User = require('./models/user');
+const helpers = require('./helpers');
 
 const authRouter = require('./controllers/authenticate');
 const chatRouter = require('./controllers/chat');
@@ -29,15 +31,10 @@ app.use('/api/chat', chatRouter);
 const server = http.createServer(app);
 io = socketio(server);
 
-const findLoggedUsers = async () => {
-  const sockets = io.in('loggedUsers');
-  const users = Object.keys(sockets.sockets).map((item) => {
-    return { username: sockets.sockets[item].username, socketID: sockets.sockets[item].id }           
-  });
-  return users;
-}
 
 io.on('connection', async (socket) => {
+  const loggedUsers = await helpers.findLoggedUsers(io);
+  console.log(loggedUsers);
   console.log("new connection");
   socket.on('subscribe', async (params) => {
     const chatIDs = params[0].chatIDs;
@@ -45,13 +42,13 @@ io.on('connection', async (socket) => {
     socket.username = username;
     socket.join('loggedUsers');
 
-    const users = await findLoggedUsers();
+    const users = await helpers.findLoggedUsers(io);
     io.in('loggedUsers').emit('user-logged', users);
     socket.join(chatIDs);
   });
 
   socket.on('message', async ( { messageID, chatID }) => {
-    const message = await Message.findById(messageID).populate({path: 'user', select: 'username'})
+    const message = await Message.findById(messageID).populate([{path: 'user', select: 'username'}, {path: 'seen', select: 'username'}])
     socket.broadcast.to(chatID).emit('new-message', { message: message.toJSON(), chatID });
   })
 
@@ -70,7 +67,7 @@ io.on('connection', async (socket) => {
 
   socket.on('disconnect', async () => {
     console.log("User has left");
-    const users = await findLoggedUsers();
+    const users = await helpers.findLoggedUsers(io);
     socket.broadcast.to('loggedUsers').emit('user-left', users);
   });
 });

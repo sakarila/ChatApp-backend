@@ -183,6 +183,19 @@ chatRouter.delete('/chat/:id', async (req, res) => {
   }
 })
 
+chatRouter.put('/message/:id', async (req, res) => {
+    const messageID = req.params.id
+
+    const token = jwt.verify(req.token, process.env.SECRET)
+    const user = await User.findById(token.id);
+    const message = await Message.findById(messageID);
+    console.log(message);
+
+    await markSeen(user._id, [message])
+
+    res.status(400);
+})
+
 chatRouter.post('/user/:id', async (req, res) => {
 
   const username = req.body.username;
