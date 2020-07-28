@@ -51,7 +51,7 @@ authRouter.post('/login', async (req, res) => {
   };
 
   const token = jwt.sign(userToken, process.env.SECRET);
-  res.status(200).send({ token, username, lastLogin: user.lastLogin, id: user._id});
+  res.status(200).send({ token, username, id: user._id});
 });
 
 // Get list of all the users

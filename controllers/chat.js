@@ -94,7 +94,7 @@ chatRouter.get('/:id', async (req, res) => {
         { path: 'user', select: 'username' },
         { path: 'seen', select: 'username' }]},
         { path: 'creator', select: 'username' },
-        { path: 'users', select: 'username' },
+        { path: 'users', select: {'username': 1, 'lastLogin': 1} },
     ])
 
     await markSeen(user._id.toString(), chat.messages);

@@ -31,7 +31,6 @@ app.use('/api/chat', chatRouter);
 const server = http.createServer(app);
 io = socketio(server);
 
-
 io.on('connection', async (socket) => {
   const loggedUsers = await helpers.findLoggedUsers(io);
   console.log(loggedUsers);
