@@ -22,14 +22,18 @@ const tokenExtractor = (request, response, next) => {
   next()
 }
 
+const server = http.createServer(app);
+io = socketio(server);
+
 app.use(cors());
 app.use(express.json());
 app.use(tokenExtractor)
 app.use('/api/auth', authRouter);
 app.use('/api/chat', chatRouter);
-
-const server = http.createServer(app);
-io = socketio(server);
+app.use('/api/loggedUsers', async (req, res) => {
+  const loggedUsers = await helpers.findLoggedUsers(io);
+  res.status(200).send(loggedUsers.map((user) => user.username));
+});
 
 io.on('connection', async (socket) => {
   const loggedUsers = await helpers.findLoggedUsers(io);
