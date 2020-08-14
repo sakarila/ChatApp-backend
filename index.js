@@ -6,7 +6,6 @@ const http = require('http');
 const socketio = require('socket.io');
 const Message = require('./models/message');
 const Chat = require('./models/chat');
-const User = require('./models/user');
 const helpers = require('./helpers');
 
 const authRouter = require('./controllers/authenticate');
@@ -37,8 +36,6 @@ app.use('/api/loggedUsers', async (req, res) => {
 
 io.on('connection', async (socket) => {
   const loggedUsers = await helpers.findLoggedUsers(io);
-  console.log(loggedUsers);
-  console.log("new connection");
   socket.on('subscribe', async (params) => {
     const chatIDs = params[0].chatIDs;
     const username = params[0].username;
@@ -69,7 +66,6 @@ io.on('connection', async (socket) => {
   })
 
   socket.on('disconnect', async () => {
-    console.log("User has left");
     const users = await helpers.findLoggedUsers(io);
     socket.broadcast.to('loggedUsers').emit('user-left', users);
   });
